@@ -1,7 +1,7 @@
 const errorhandler = (err, req, res, next) => {
   // Duplicate key error (E11000)
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0]; // e.g., "phone"
+    const field = Object.keys(err.keyValue)[0];
     return res.status(400).json({
       success: false,
       message: `${field} already exists: ${err.keyValue[field]}`,
@@ -19,15 +19,10 @@ const errorhandler = (err, req, res, next) => {
   }
 
   // Default server error
-  res.status(500).json({
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode).json({
     success: false,
     message: err.message || "Server Error",
-  });
-
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  res.status(statusCode);
-  res.json({
-    message: err.message,
     stack: process.env.NODE_ENV === "production" ? null : err.stack,
   });
 };

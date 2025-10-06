@@ -24,6 +24,13 @@ const userSchema = new mongoose.Schema(
     },
     role: { type: String, enum: ["admin", "user"], default: "user" },
     city: { type: String },
+    // OTP fields
+    otp: { type: String },
+    otpExpiry: { type: Date },
+    // email verification fields
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationTokenExpiry: { type: Date },
   },
   { timestamps: true }
 );

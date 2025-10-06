@@ -1,26 +1,30 @@
 const express = require("express");
 const {
-  getAllProperty,
+  getAllApprovedProperties,
   createProperty,
-  getAllPropertyById,
   updateProperty,
-  deletePropertyById,
+  deleteProperty,
+  approveProperty,
+  getAllProperties,
 } = require("../controllers/propertyControler");
 const router = express.Router();
 
-// get properties
-router.get("/property", getAllProperty);
+const { protect, admin } = require("../middleware/authMiddleware");
 
-// create property
-router.post("/property", createProperty);
+// public route to get all approved properties
+router.get("/approved", getAllApprovedProperties);
 
-// get property by id
-router.get("/property/:id", getAllPropertyById);
+//protect
+router.use(protect);
 
-// update property by id
-router.put("/property/:id", updateProperty);
+// protected route to create a property (only for authenticated users)
+router.post("/", createProperty);
+// router.get("/:id", getAllPropertyById);
+router.put("/:id", updateProperty);
+router.delete("/:id", deleteProperty);
 
-// delete property by id
-router.delete("/property/:id", deletePropertyById);
+// admin actions
+router.get("/", admin, getAllProperties);
+router.put("/:id/approve", admin, approveProperty);
 
 module.exports = router;

@@ -1,48 +1,113 @@
-let property = [];
+const Property = require("../models/propertyModel");
 
-exports.getAllProperty = (req, res) => {
-  res.status(200).json(property);
-};
-exports.createProperty = (req, res) => {
-  const { id, pname, price, picture, description } = req.body;
-  if (!pname || !price) {
-    return res
-      .status(400)
-      .json({ message: "property name and price is required." });
+// Get all approved properties (for public users/buyers)
+exports.getAllApprovedProperties = async (req, res) => {
+  try {
+    const properties = await Property.find({ status: "Available" });
+    res.status(200).json(properties);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-  const newProperty = { id, pname, price, picture, description };
-  property.push(newProperty);
-
-  return res.status(201).json(newProperty);
-};
-exports.getAllPropertyById = (req, res) => {
-  const propert = property.find((p) => p.id === req.params.id);
-  if (!propert) {
-    return res.status(404).json({ message: "property not found." });
-  }
-  return res.status(200).json(propert);
 };
 
-exports.updateProperty = (req, res) => {
-  const propertyIndex = property.findIndex((p) => p.id === req.params.id);
-  if (propertyIndex === -1) {
-    return res.status(404).json({ message: "property not found." });
+// Create property (owner)
+exports.createProperty = async (req, res) => {
+  try {
+    const { title, description, propertyTypes, price, city, location, images } =
+      req.body;
+
+    if (!title || !price || !propertyTypes || !city || !location || !images) {
+      return res
+        .status(400)
+        .json({ message: "Please fill out all required fields" });
+    }
+
+    const newProperty = new Property({
+      title,
+      description,
+      propertyTypes,
+      price,
+      city,
+      location,
+      images,
+      owner: req.user._id,
+    });
+
+    await newProperty.save();
+    res.status(201).json(newProperty);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-  property[propertyIndex] = { ...property[propertyIndex], ...req.body };
-  return res.status(200).json({
-    message: "data is updated successfully.",
-    property: property[propertyIndex],
-  });
 };
 
-exports.deletePropertyById = (req, res) => {
-  const deleteIndex = property.findIndex((p) => p.id === req.params.id);
-  if (deleteIndex === -1) {
-    return res.status(404).json({ error: "property not found." });
+// Update property (only owner)
+exports.updateProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property)
+      return res.status(404).json({ message: "Property not found" });
+    if (property.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to update this property" });
+    }
+
+    Object.assign(property, req.body);
+    property.status = "pending"; // re-approval needed after edits
+    await property.save();
+
+    res.status(200).json(property);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-  const deleteData = property.splice(deleteIndex, 1);
-  return res.status(200).json({
-    massage: "data is deleted successfully.",
-    deleteData: deleteData[0],
-  });
+};
+
+// Get all properties (admin only)
+exports.getAllProperties = async (req, res) => {
+  try {
+    const properties = await Property.find().populate("owner", "fname email");
+    res.status(200).json(properties);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Delete property (owner or admin)
+exports.deleteProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property)
+      return res.status(404).json({ message: "Property not found" });
+
+    if (
+      property.owner.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this property" });
+    }
+
+    await property.deleteOne();
+    res.status(200).json({ message: "Property deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Admin approves/rejects property
+exports.approveProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property)
+      return res.status(404).json({ message: "Property not found" });
+
+    property.status = req.body.status; // "approved" or "rejected"
+    await property.save();
+
+    res.status(200).json({ message: `Property ${property.status}`, property });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
 };
