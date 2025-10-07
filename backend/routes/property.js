@@ -2,12 +2,11 @@ const express = require("express");
 const {
   getAllApprovedProperties,
   createProperty,
-<<<<<<< HEAD
   updateProperty,
   deleteProperty,
   approveProperty,
   getAllProperties,
-} = require("../controllers/propertyControler");
+} = require("../controllers/propertyController");
 const router = express.Router();
 
 const { protect, admin } = require("../middleware/authMiddleware");
@@ -29,4 +28,3 @@ router.get("/", admin, getAllProperties);
 router.put("/:id/approve", admin, approveProperty);
 
 module.exports = router;
-
