@@ -2,25 +2,20 @@ const express = require("express");
 const {
   getAllProperty,
   createProperty,
-  getAllPropertyById,
+  getPropertyById, // Renamed from getAllPropertyById for clarity
   updateProperty,
   deletePropertyById,
-} = require("../controllers/propertyControler");
+} = require("../controllers/propertyController"); // <<<--- THIS LINE must be correct
+const { protect, adminOrBroker } = require("../middleware/authMiddleware"); // Import auth middleware
 const router = express.Router();
 
-// get properties
-router.get("/property", getAllProperty);
+// Publicly accessible routes (or you can add protect middleware if needed)
+router.get("/", getAllProperty); // Changed path to '/' to be consistent with /api
+router.get("/:id", getPropertyById); // Changed path to '/:id'
 
-// create property
-router.post("/property", createProperty);
-
-// get property by id
-router.get("/property/:id", getAllPropertyById);
-
-// update property by id
-router.put("/property/:id", updateProperty);
-
-// delete property by id
-router.delete("/property/:id", deletePropertyById);
+// Routes protected for Admin or Broker
+router.post("/", protect, adminOrBroker, createProperty);
+router.put("/:id", protect, adminOrBroker, updateProperty);
+router.delete("/:id", protect, adminOrBroker, deletePropertyById);
 
 module.exports = router;
