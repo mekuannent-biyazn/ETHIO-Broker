@@ -1,26 +1,36 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const userSchema = mongoose.Schema(
   {
-    fname: { type: String, required: true },
-    lname: { type: String, required: true },
+    fname: {
+      type: String,
+      required: [true, "Please add a first name"],
+    },
+    lname: {
+      type: String,
+      required: [true, "Please add a last name"],
+    },
     email: {
       type: String,
-      required: true,
+      required: [true, "Please add an email"],
       unique: true,
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, "Please use a valid email address"],
     },
-    password: { type: String, required: true },
+    password: {
+      type: String,
+      required: [true, "Please add a password"],
+    },
     phone: {
       type: String,
-      required: true,
-      unique: true,
-      match: [
-        /^(?:\+251|0)\d{9}$/,
-        "Please enter a valid Ethiopian phone number",
-      ],
+      required: [true, "Please add a phone number"],
+    },
+    city: {
+      type: String,
+      required: [true, "Please add a city"],
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin", "broker"], // Added 'broker'
+      default: "user",
     },
     role: { type: String, enum: ["admin", "user"], default: "user" },
     city: { type: String },
@@ -32,8 +42,9 @@ const userSchema = new mongoose.Schema(
     verificationToken: { type: String },
     verificationTokenExpiry: { type: Date },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

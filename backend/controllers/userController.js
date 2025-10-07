@@ -21,14 +21,14 @@ const transporter = nodemailer.createTransport({
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 // @desc Register user
+// @route POST /api/users/register
+// @access Public
 exports.registerUser = async (req, res, next) => {
   try {
-    const { fname, lname, email, password, phone, city, role } = req.body;
+    const { fname, lname, email, password, confirmPassword, phone, city, role } = req.body;
 
-    if (!fname || !lname || !email || !password || !phone) {
-      return res
-        .status(400)
-        .json({ message: "Please fill all required fields" });
+    if (!fname || !lname || !email || !password || !confirmPassword || !phone || !city) {
+      return res.status(400).json({ message: "Please fill all required fields" });
     }
 
     const userExists = await User.findOne({ email });
@@ -36,11 +36,20 @@ exports.registerUser = async (req, res, next) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Password and Confirm Password do not match" });
+    }
+
     const count = await User.countDocuments();
-    let asignrole = role || "user";
+    let assignRole = role || "user";
+
     // First registered user is admin
     if (count === 0) {
-      asignrole = "admin";
+      assignRole = "admin";
+    }
+    // Second registered user is broker (as per your original logic)
+    else if (count === 1) {
+      assignRole = "broker";
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -54,6 +63,7 @@ exports.registerUser = async (req, res, next) => {
       password: hash,
       phone,
       city,
+      role: assignRole,
       role: asignrole,
       otp,
       otpExpiry,
@@ -183,6 +193,8 @@ exports.resendVerificationEmail = async (req, res) => {
 };
 
 // @desc Login user
+// @route POST /api/users/login
+// @access Public
 exports.loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -192,6 +204,21 @@ exports.loginUser = async (req, res, next) => {
 
     // Find user by email
     const user = await User.findOne({ email });
+
+    if (user && (await bcrypt.compare(password, user.password))) {
+      res.json({
+        _id: user.id,
+        fname: user.fname,
+        lname: user.lname,
+        email: user.email,
+        role: user.role,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(401).json({ message: "Invalid email or password" });
+    }
+  } catch (error) {
+    next(error);
     if (!user)
       return res.status(400).json({ message: "This Email is not registered!" });
 
@@ -216,12 +243,12 @@ exports.loginUser = async (req, res, next) => {
       user: { id: user._id, name: user.fname, email: user.email },
       token,
     });
-  } catch (err) {
-    next(err);
-  }
+  } 
 };
 
 // @desc Get all users (Admin only)
+// @route GET /api/users
+// @access Private/Admin
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find().select("-password");
@@ -232,6 +259,8 @@ exports.getAllUsers = async (req, res, next) => {
 };
 
 // @desc Get user by ID (Admin only)
+// @route GET /api/users/:id
+// @access Private/Admin
 exports.getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
@@ -243,15 +272,28 @@ exports.getUserById = async (req, res, next) => {
 };
 
 // @desc Update user (Admin only)
+// @route PUT /api/users/:id
+// @access Private/Admin
 exports.updateUserById = async (req, res, next) => {
   try {
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const { password, confirmPassword, ...otherFields } = req.body; // Exclude password fields if not meant for direct update here
+    let updateData = { ...otherFields };
+
+    // You might want to handle password updates in a separate route for security
+    // For now, if password is sent, it's hashed
+    if (password && password !== '') {
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Password and Confirm Password do not match" });
+      }
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
+      runValidators: true, // Ensures schema validators run on update
     }).select("-password");
 
-    if (!updatedUser)
-      return res.status(404).json({ message: "User not found" });
-
+    if (!updatedUser) return res.status(404).json({ message: "User not found" });
     res.json({ message: "User updated successfully", user: updatedUser });
   } catch (error) {
     next(error);
@@ -259,23 +301,27 @@ exports.updateUserById = async (req, res, next) => {
 };
 
 // @desc Delete user (Admin only)
+// @route DELETE /api/users/:id
+// @access Private/Admin
 exports.deleteUserById = async (req, res, next) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
-
     if (!deletedUser)
       return res.status(404).json({ message: "User not found" });
-
     res.json({ message: "User deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
 
+// @desc Update user role (Admin only)
+// @route PATCH /api/users/:id/role
+// @access Private/Admin
 exports.updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
-    if (!["user", "admin"].includes(role)) {
+    // Allow 'user', 'admin', 'broker' roles
+    if (!["user", "admin", "broker"].includes(role)) {
       return res.status(400).json({ message: "Invalid role specified" });
     }
 
@@ -288,7 +334,7 @@ exports.updateUserRole = async (req, res, next) => {
     await user.save();
 
     res.json({
-      message: "user role updated to" + role,
+      message: `User role updated to ${role}`,
       user: {
         id: user._id,
         fname: user.fname,

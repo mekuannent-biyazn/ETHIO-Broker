@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+<<<<<<< HEAD
 const propertySchema = new mongoose.Schema(
   {
     owner: {
@@ -64,3 +65,4 @@ const propertySchema = new mongoose.Schema(
 const Property = mongoose.model("Property", propertySchema);
 
 module.exports = Property;
+

@@ -1,3 +1,9 @@
+const notfound = (req, res, next) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  res.status(404);
+  next(error);
+};
+
 const errorhandler = (err, req, res, next) => {
   // Duplicate key error (E11000)
   if (err.code === 11000) {
@@ -23,14 +29,15 @@ const errorhandler = (err, req, res, next) => {
   res.status(statusCode).json({
     success: false,
     message: err.message || "Server Error",
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode);
+  res.json({
+    message: err.message,
     stack: process.env.NODE_ENV === "production" ? null : err.stack,
   });
 };
 
-const notfound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  res.status(404);
-  next(error);
+module.exports = {
+  notfound,
+  errorhandler,
 };
-
-module.exports = { errorhandler, notfound };

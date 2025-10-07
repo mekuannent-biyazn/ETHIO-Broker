@@ -25,7 +25,6 @@ router.get("/", protect, admin, getAllUsers);
 router.get("/:id", protect, admin, getUserById);
 router.put("/:id", protect, admin, updateUserById);
 router.delete("/:id", protect, admin, deleteUserById);
-
 router.patch("/:id/role", protect, admin, updateUserRole);
 
 module.exports = router;

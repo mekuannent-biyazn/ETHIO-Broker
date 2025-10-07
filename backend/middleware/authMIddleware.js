@@ -10,16 +10,16 @@ exports.protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
       req.user = await User.findById(decoded.id).select("-password");
+
       if (!req.user) {
         return res
           .status(401)
           .json({ message: "Not authorized, user not found" });
       }
-
       next();
     } catch (error) {
+      console.error(error); // Log the error for debugging
       return res.status(401).json({ message: "Not authorized, token failed" });
     }
   }
@@ -35,5 +35,23 @@ exports.admin = (req, res, next) => {
     next();
   } else {
     res.status(403).json({ message: "Access denied, admin only" });
+  }
+};
+
+// Restrict to broker
+exports.broker = (req, res, next) => {
+  if (req.user && req.user.role === "broker") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied, broker only" });
+  }
+};
+
+// Restrict to admin or broker
+exports.adminOrBroker = (req, res, next) => {
+  if (req.user && (req.user.role === "admin" || req.user.role === "broker")) {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied, admin or broker only" });
   }
 };

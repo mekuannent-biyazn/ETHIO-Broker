@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getAllApprovedProperties,
   createProperty,
+<<<<<<< HEAD
   updateProperty,
   deleteProperty,
   approveProperty,
@@ -28,3 +29,4 @@ router.get("/", admin, getAllProperties);
 router.put("/:id/approve", admin, approveProperty);
 
 module.exports = router;
+
